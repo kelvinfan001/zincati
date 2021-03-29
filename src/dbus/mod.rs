@@ -33,7 +33,7 @@ impl DBusService {
         let connection = zbus::Connection::new_system()?;
 
         fdo::DBusProxy::new(&connection)?.request_name(
-            "org.coreos.zincati1",
+            "org.coreos.zincati",
             fdo::RequestNameFlags::ReplaceExisting.into(),
         )?;
 
@@ -42,14 +42,14 @@ impl DBusService {
             agent_addr: self.agent_addr.clone(),
         };
         object_server.at(
-            &ObjectPath::try_from("/org/coreos/zincati1")?,
+            &ObjectPath::try_from("/org/coreos/zincati")?,
             experimental_interface,
         )?;
         let updates_interface = Updates {
             agent_addr: self.agent_addr.clone(),
         };
         object_server.at(
-            &ObjectPath::try_from("/org/coreos/zincati1")?,
+            &ObjectPath::try_from("/org/coreos/zincati")?,
             updates_interface,
         )?;
 
