@@ -2,6 +2,8 @@
 
 mod experimental;
 use experimental::Experimental;
+mod updates;
+use updates::Updates;
 
 use crate::update_agent::UpdateAgent;
 use actix::prelude::*;
@@ -42,6 +44,13 @@ impl DBusService {
         object_server.at(
             &ObjectPath::try_from("/org/coreos/zincati1")?,
             experimental_interface,
+        )?;
+        let updates_interface = Updates {
+            agent_addr: self.agent_addr.clone(),
+        };
+        object_server.at(
+            &ObjectPath::try_from("/org/coreos/zincati1")?,
+            updates_interface,
         )?;
 
         loop {
