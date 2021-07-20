@@ -91,27 +91,27 @@ impl Handler<RefreshTick> for UpdateAgent {
 
             trace!("update agent tick, current state: {:?}", *state);
 
-            let action = match *state {
-                UpdateAgentState::StartState => self.tick_initialize(state),
-                UpdateAgentState::Initialized => self.tick_report_steady(state),
-                UpdateAgentState::ReportedSteady => self.tick_check_updates(state),
-                UpdateAgentState::NoNewUpdate => self.tick_check_updates(state),
+            let action = match &*state {
+                UpdateAgentState::StartState => a.tick_initialize(state),
+                UpdateAgentState::Initialized => a.tick_report_steady(state),
+                UpdateAgentState::ReportedSteady => a.tick_check_updates(state),
+                UpdateAgentState::NoNewUpdate => a.tick_check_updates(state),
                 UpdateAgentState::UpdateAvailable((release, _)) => {
                     let update = release.clone();
-                    self.tick_stage_update(update, state)
+                    a.tick_stage_update(update, state)
                 }
                 UpdateAgentState::UpdateStaged((release, _)) => {
                     let update = release.clone();
-                    self.tick_finalize_update(update, state)
+                    a.tick_finalize_update(update, state)
                 }
                 UpdateAgentState::UpdateFinalized(release) => {
                     let update = release.clone();
-                    self.tick_end(update, state)
+                    a.tick_end(update, state)
                 }
-                UpdateAgentState::EndState => self.nop_state(state),
+                UpdateAgentState::EndState => a.nop_state(state),
             };
 
-            action.map(|r, a, c| (prev_state, state))
+            action.map(|state, a, c| (prev_state, state))
         });
 
         let update_machine = state_action.then(|(prev_state, state), actor, ctx| {
@@ -129,11 +129,11 @@ impl Handler<RefreshTick> for UpdateAgent {
             actix::fut::ok(())
         });
 
-        // Process state machine refresh ticks sequentially.
-        ctx.spawn(update_machine);
+        // // Process state machine refresh ticks sequentially.
+        // ctx.spawn(update_machine);
 
-        // Box::pin(update_machine)
-        Box::pin(actix::fut::ok(()))
+        Box::pin(update_machine)
+        // Box::pin(actix::fut::ok(()))
     }
 }
 
