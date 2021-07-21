@@ -92,30 +92,31 @@ impl Handler<RefreshTick> for UpdateAgent {
             trace!("update agent tick, current state: {:?}", *state);
 
             let action = match &*state {
-                UpdateAgentState::StartState => a.tick_initialize(state),
-                UpdateAgentState::Initialized => a.tick_report_steady(state),
-                UpdateAgentState::ReportedSteady => a.tick_check_updates(state),
-                UpdateAgentState::NoNewUpdate => a.tick_check_updates(state),
-                UpdateAgentState::UpdateAvailable((release, _)) => {
-                    let update = release.clone();
-                    a.tick_stage_update(update, state)
-                }
-                UpdateAgentState::UpdateStaged((release, _)) => {
-                    let update = release.clone();
-                    a.tick_finalize_update(update, state)
-                }
+                // UpdateAgentState::StartState => a.tick_initialize(state),
+                // UpdateAgentState::Initialized => a.tick_report_steady(state),
+                // UpdateAgentState::ReportedSteady => a.tick_check_updates(state),
+                // UpdateAgentState::NoNewUpdate => a.tick_check_updates(state),
+                // UpdateAgentState::UpdateAvailable((release, _)) => {
+                //     let update = release.clone();
+                //     a.tick_stage_update(update, state)
+                // }
+                // UpdateAgentState::UpdateStaged((release, _)) => {
+                //     let update = release.clone();
+                //     a.tick_finalize_update(update, state)
+                // }
                 UpdateAgentState::UpdateFinalized(release) => {
                     let update = release.clone();
                     a.tick_end(update, state)
                 }
-                UpdateAgentState::EndState => a.nop_state(state),
+                // UpdateAgentState::EndState => a.nop_state(state),
+                _ => a.nop_state(state),
             };
 
             action.map(|state, a, c| (prev_state, state))
         });
 
         let update_machine = state_action.then(|(prev_state, state), actor, ctx| {
-            if let Some(pause) = actor.refresh_delay(prev_state, *state) {
+            if let Some(pause) = actor.refresh_delay(prev_state, *state.unwrap()) {
                 log::trace!(
                     "scheduling next agent refresh in {} seconds",
                     pause.as_secs()
@@ -379,14 +380,14 @@ impl UpdateAgent {
     fn tick_finalize_update(
         &mut self,
         release: Release,
-        state: OwnedRwLockWriteGuard<UpdateAgentState>,
+        mut state: OwnedRwLockWriteGuard<UpdateAgentState>,
     ) -> ResponseActFuture<Self, Result<OwnedRwLockWriteGuard<UpdateAgentState>, ()>> {
         trace!("trying to finalize an update");
         FINALIZATION_ATTEMPTS.inc();
 
         let strategy_can_finalize = self.strategy.can_finalize();
         let state_change = actix::fut::wrap_future::<_, Self>(strategy_can_finalize)
-            .then(|strategy_can_finalize, actor, _ctx| {
+            .then(move |strategy_can_finalize, actor, _ctx| {
                 if !strategy_can_finalize {
                     utils::update_unit_status(&format!(
                         "update staged: {}; reboot pending due to update strategy",
